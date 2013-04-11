@@ -1,3 +1,5 @@
+# Andrew's first coding
+
 inv.logit.mat <- function(x, min = 0, max = 1) {
   p <- exp(x)/(1 + exp(x))
   which.large=is.na(p) & !is.na(x)
