@@ -16,8 +16,9 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100) {
   # Initialize #
   ##################
   mu=rnorm(d)
-  A=svd(scale(dat,center=TRUE,scale=FALSE))$u[,1:k]
-  B=svd(scale(dat,center=TRUE,scale=FALSE))$v[,1:k] %*% diag(svd(scale(dat,center=TRUE,scale=FALSE))$d[1:k])
+  udv=svd(scale(dat,center=TRUE,scale=FALSE))
+  A=udv$u[,1:k]
+  B=udv$v[,1:k] %*% diag(udv$d[1:k])
   # row.names(A)=row.names(dat); row.names(B)=colnames(dat)
   loss.trace=numeric(max.iters)
   
