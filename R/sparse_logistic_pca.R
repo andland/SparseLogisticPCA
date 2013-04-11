@@ -44,7 +44,7 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100) {
     C=t(Xstar) %*% A
     B=abs(B)/(abs(B)+4*n*lambda)*C
     
-    loglike=sum(log(inv.logit.mat(q*(outer(rep(1,n),mu)+A %*% t(B)))))
+    loglike=sum(log(inv.logit.mat(q*(outer(rep(1,n),mu)+A %*% t(B))))[!is.na(dat)])
     penalty=n*lambda*sum(abs(B))
     loss.trace[m]=-loglike+penalty
     
