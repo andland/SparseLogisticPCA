@@ -7,16 +7,20 @@ inv.logit.mat <- function(x, min = 0, max = 1) {
 
 sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100) {
   # From Lee, Huang, Hu (2010)
-  # Does not deal with missing data
   # Uses the uniform bound for the log likelihood
   q=as.matrix(2*dat-1)
+  q[is.na(q)]<-0 # forces x to be equal to theta when data is missing
   n=nrow(dat)
   d=ncol(dat)
   
   # Initialize #
   ##################
   mu=rnorm(d)
-  udv=svd(scale(dat,center=TRUE,scale=FALSE))
+  if (any(is.na(dat))) {
+    udv=svd(scale(q,center=TRUE,scale=FALSE))
+  } else {
+    udv=svd(scale(dat,center=TRUE,scale=FALSE))
+  }
   A=udv$u[,1:k]
   B=udv$v[,1:k] %*% diag(udv$d[1:k])
   # row.names(A)=row.names(dat); row.names(B)=colnames(dat)
