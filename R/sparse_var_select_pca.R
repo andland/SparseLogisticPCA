@@ -16,8 +16,10 @@ sparse.var.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100) {
   loss.trace=numeric(max.iters)
   
   for (m in 1:max.iters) {
-    A=X %*% B %*% solve(t(B) %*% B)
-    A=qr.Q(qr(A))
+#     A=X %*% B %*% solve(t(B) %*% B)
+#     A=qr.Q(qr(A))
+    M=svd(X %*% B)
+    A=M$u %*% t(M$v)
     
     A.kron=diag(rep(1,p)) %x% A
     glas=grplasso(x=A.kron, y=X.vec, index=rep(1:p,each=k), lambda=lambda, center=FALSE, 
@@ -42,26 +44,30 @@ sparse.var.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100) {
   return(list(mu=mu,A=A,B=B,zeros=zeros,BIC=BIC,iters=m,loss.trace=loss.trace[1:m]))
 }
 
+dat=scale(EuStockMarkets,F,F)
+summary(princomp(dat))
 k=2
 A=matrix(svd(scale(dat,center=TRUE,scale=FALSE))$u[,1:k],nrow(dat),k)
 A.kron=diag(rep(1,ncol(dat))) %x% A
 lambdas <- lambdamax(x=A.kron, y=as.numeric(scale(dat,center=TRUE,scale=FALSE)), 
                     index=rep(1:ncol(dat),each=k), center=FALSE, 
-                    standardize=FALSE, model=LinReg()) * 0.5^seq(10,1,-1)
+                    standardize=FALSE, model=LinReg()) * 0.5^seq(10,0,-1)
 
 zs=numeric(length(lambdas))
 for (i in 1:length(lambdas)) {
   print(i)
-  scp=sparse.var.pca(dat,lambda=lambdas[i],k=2,quiet=TRUE,max.iters=100)
+  scp=sparse.var.pca(dat,lambda=lambdas[i],k=k,quiet=FALSE,max.iters=100)
+  scp$zeros
   zs[i]=scp$zeros
 }
-plot(lambdas,zs)
+plot(lambdas,zs,log='x')
 ggmatplot(dat)
-ggmatplot(outer(rep(1,n),(scp$mu)) + scp$A %*% t(scp$B))
+ggmatplot(outer(rep(1,nrow(dat)),(scp$mu)) + scp$A %*% t(scp$B))
+sum((outer(rep(1,nrow(dat)),(scp$mu)) + scp$A %*% t(scp$B)-dat)^2)
 
 colnames(dat)[rowSums(abs(scp$B))<1e-10]
 colSums(dat[,rowSums(abs(scp$B))<1e-10])
-sort(colSums(dat))
+sort(apply(dat,2,var))
 
 plot(udv$u[,1],A[,1])
 plot(udv$u[,2],A[,2])
