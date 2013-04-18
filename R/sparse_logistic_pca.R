@@ -5,7 +5,7 @@ inv.logit.mat <- function(x, min = 0, max = 1) {
   p * (max - min) + min
 }
 
-sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100) {
+sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,randstart=FALSE) {
   # From Lee, Huang, Hu (2010)
   # Uses the uniform bound for the log likelihood
   q=as.matrix(2*dat-1)
@@ -15,18 +15,24 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100) {
   
   # Initialize #
   ##################
-  mu=rnorm(d)
-  if (any(is.na(dat))) {
+  if (!randstart) {
+    mu=colMeans(q)
     udv=svd(scale(q,center=TRUE,scale=FALSE))
+    A=matrix(udv$u[,1:k],n,k)
+    B=matrix(udv$v[,1:k],d,k) %*% matrix(diag(udv$d[1:k]),k,k)
   } else {
-    udv=svd(scale(dat,center=TRUE,scale=FALSE))
+    mu=rnorm(d)
+    A=matrix(runif(n*k,-1,1),n,k)
+    B=matrix(runif(d*k,-1,1),d,k)
   }
-  A=matrix(udv$u[,1:k],n,k)
-  B=matrix(udv$v[,1:k],d,k) %*% matrix(diag(udv$d[1:k]),k,k)
   # row.names(A)=row.names(dat); row.names(B)=colnames(dat)
   loss.trace=numeric(max.iters)
   
   for (m in 1:max.iters) {
+    last.mu=mu
+    last.A=A
+    last.B=B
+    
     theta=outer(rep(1,n),mu)+A %*% t(B)
     X=as.matrix(theta+4*q*(1-inv.logit.mat(q*theta)))
     Xcross=X-A %*% t(B)
@@ -55,7 +61,14 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100) {
       if ((loss.trace[m-1]-loss.trace[m])<(.0001)) 
         break
     }
+  }
+  if (loss.trace[m-1]<loss.trace[m]) {
+    mu=last.mu
+    A=last.A
+    B=last.B
+    m=m-1
     
+    loglike=sum(log(inv.logit.mat(q*(outer(rep(1,n),mu)+A %*% t(B))))[!is.na(dat)])
   }
   zeros=sum(abs(B)<1e-10)
   BIC=-2*loglike+log(n)*(d+n*k+sum(abs(B)>=1e-10))
