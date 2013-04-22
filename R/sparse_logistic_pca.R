@@ -5,7 +5,8 @@ inv.logit.mat <- function(x, min = 0, max = 1) {
   p * (max - min) + min
 }
 
-sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,randstart=FALSE,procustres=TRUE) {
+sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,
+                                randstart=FALSE,procrustes=TRUE) {
   # From Lee, Huang, Hu (2010)
   # Uses the uniform bound for the log likelihood
   q=as.matrix(2*dat-1)
