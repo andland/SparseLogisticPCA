@@ -5,7 +5,7 @@ inv.logit.mat <- function(x, min = 0, max = 1) {
   p * (max - min) + min
 }
 
-sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,randstart=FALSE) {
+sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,randstart=FALSE,procustres=TRUE) {
   # From Lee, Huang, Hu (2010)
   # Uses the uniform bound for the log likelihood
   q=as.matrix(2*dat-1)
@@ -41,8 +41,13 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,randst
     theta=outer(rep(1,n),mu)+A %*% t(B)
     X=as.matrix(theta+4*q*(1-inv.logit.mat(q*theta)))
     Xstar=X-outer(rep(1,n),mu)
-    A=Xstar %*% B %*% solve(t(B) %*% B)
-    A=qr.Q(qr(A))
+    if (procrustes) {
+      M=svd(Xstar %*% B)
+      A=M$u %*% t(M$v)
+    } else {
+      A=Xstar %*% B %*% solve(t(B) %*% B)
+      A=qr.Q(qr(A))
+    }
     
     theta=outer(rep(1,n),mu)+A %*% t(B)
     X=as.matrix(theta+4*q*(1-inv.logit.mat(q*theta)))
