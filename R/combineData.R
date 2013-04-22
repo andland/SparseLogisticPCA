@@ -3,12 +3,12 @@ library(reshape2)
 # Should be where text files were downloaded from 
 # http://snp.cshl.org/downloads/datafreeze.html.en
 # I used data from http://snp.cshl.org/downloads/genotypes/2005-06_16c.1_phaseI/full/non-redundant/
-setwd("U:/CF/Ethnic")
+setwd("C:/Users/Andrew/SparseLogisticPCA/Raw Data")
 
 
 # this is from table S1 of Serre et al (2008)
 # http://www.plosone.org/article/info:doi/10.1371/journal.pone.0001382#pone.0001382.s008
-locations=read.csv("locations.csv",header=TRUE,stringsAsFactors=FALSE)
+locations=read.csv("../Data/locations.csv",header=TRUE,stringsAsFactors=FALSE)
 
 files=dir()
 files=files[grep(".txt",files)]
@@ -20,7 +20,9 @@ for (f in 1:length(files)) {
   colnames(chdata)[1]="rsid"
   which.rs=chdata$rsid %in% locations$RSID
   if (sum(which.rs)>0) {
-    ethnicity=substring(files[f],nchar(files[f])-6,nchar(files[f])-4)
+#     ethnicity=substring(files[f],nchar(files[f])-6,nchar(files[f])-4)
+    ethnicity=substring(files[f],nchar(files[f])-18,nchar(files[f])-16)
+    ethnicity=ifelse(ethnicity=="CHB","ASN",ethnicity)
     
     chdata=chdata[which.rs,]
     chdata.m=melt(chdata[,c(1,12:ncol(chdata))],id=1)
@@ -49,7 +51,7 @@ table(snp.mat$Ethnicity)
 
 #######
 is.na(snp.mat)<-(snp.mat=="NN")
-ggmatplot(as.matrix(is.na(snp.mat[3:100])),bw=F)
+ggmatplot(as.matrix(is.na(snp.mat[3:10])),bw=F)
 ggmatplot(snp.mat[,sample(3:ncol(snp.mat),100)],bw=F)
 
 snp.bin.mat=matrix(0,nrow(snp.mat),ncol(snp.mat)-2)
@@ -73,15 +75,15 @@ for (c in 3:ncol(snp.mat)) {
 }
 snp.bin.mat=snp.bin.mat[,-cols.rm]
 # snp.bin.mat=snp.bin.mat[,colSums(snp.bin.mat,na.rm=TRUE)>0]
-ggmatplot(snp.bin.mat[,sample(1:ncol(snp.bin.mat),400)],rownames=T)+coord_equal()
-mean(is.na(snp.bin.mat)) # 0.527%
-dim(snp.bin.mat) # 269x1322
+ggmatplot(snp.bin.mat[,sample(1:ncol(snp.bin.mat),100)],rownames=T)+coord_equal()
+mean(is.na(snp.bin.mat)) # 0.527% / 0.788%
+dim(snp.bin.mat) # 269x1322 / 270x1407
 write.csv(snp.bin.mat,"SNPBinaryMatrix.csv",row.names=TRUE)
 # snp.bin.mat=read.csv("SNPBinaryMatrix.csv",row.names=1)
 
 snp.bin.mat.na=snp.bin.mat
 snp.bin.mat.na[is.na(snp.bin.mat.na)]=0.5
-pca=prcomp(snp.bin.mat.na)
+pca=prcomp(snp.bin.mat.na,scale.=F)
 qplot(PC1,PC2,data=data.frame(pca$x),size=I(3),colour=as.factor(substring(rownames(snp.bin.mat),1,3)))+
   labs(colour="Ethnicity")+coord_equal()
 plot(cumsum(pca$sdev^2)/sum(pca$sdev^2),ylim=c(0,1),type='b')

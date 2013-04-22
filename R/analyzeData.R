@@ -1,37 +1,18 @@
+rm(list=ls())
 library(ggplot2)
 setwd("C:/Users/Andrew/SparseLogisticPCA")
 source("R/sparse_logistic_pca.R")
-ggmatplot <- function(mat,bw=TRUE,rotate.y=90,rownames=NULL) {
-  require(ggplot2)
-  if (is.null(rownames))
-    rownames=(nrow(mat)<100 & any(!is.null(rownames(mat))))
-  matm=melt(as.matrix(mat))
-  matm$Var1=as.factor(matm$Var1)
-  matm$Var2=as.factor(matm$Var2)
-  if (is.null(rownames(mat))) 
-    rownames(mat)=1:nrow(mat)
-  if (is.null(colnames(mat))) 
-    colnames(mat)=1:ncol(mat)
-  
-  
-  plt<-ggplot(matm,aes(Var2,Var1))+geom_tile(aes(fill=value))+
-    scale_y_discrete(limits = rev(rownames(mat)))+
-    scale_x_discrete(limits = colnames(mat))+labs(x=NULL,y=NULL)
-  if (bw) {
-    plt<-plt+scale_fill_continuous(low="white",high="black")
-  }
-  if (rotate.y!=0) {
-    plt<-plt+theme(axis.text.x = element_text(angle=rotate.y,vjust=0)) 
-  }
-  if (!rownames) {
-    plt<-plt+theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
-  }
-  return(plt)
-}
+source("C:/Users/Andrew/Dropbox/Stat/Research/MedData/genPCAfun.R")
+# dat=read.csv("C:/Users/Andrew/Dropbox/Stat/Research/MedData/MedData_for_Analysis_PU.csv")
+# meddata.nums=meddata[,5:ncol(meddata)]
+# dat=meddata.nums[sort(sample(nrow(meddata.nums),100)),]
+# dat=dat[rowSums(dat)>0,colSums(dat)>0]
+# dat=read.csv("C:/Users/Andrew/Dropbox/Blog/HOF Factor Analysis/HOF votes.csv",row.names=1)
+# dat=dat[rowSums(dat)>0,colSums(dat)>0]
 
 # Load Data
 locations=read.csv("Data/locations.csv")
-# snpdata=read.csv("Data/RawCombinedData.csv")
+# snpdata=read.csv("Raw Data/RawCombinedData.csv")
 
 snp.mat=read.csv("Data/RawSNPMatrix.csv")
 is.na(snp.mat)<-(snp.mat=="NN")
@@ -45,18 +26,32 @@ ethn=as.factor(substring(rownames(snp.bin.mat),1,3))
 
 # Visualze Data
 ggmatplot(as.matrix(is.na(snp.mat[3:102])),bw=F)
-ggmatplot(snp.mat[,3:102],bw=F)
+ggmatplot(snp.mat[,3:502],bw=F)+coord_equal()
+ggsave("Plots/SampleSNPData.pdf",ggmatplot(snp.mat[,3:402],bw=F)+coord_equal(),
+       width=1.5*10,height=10)
 ggmatplot(snp.bin.mat[,sample(1:ncol(snp.bin.mat),400)],rownames=F)+coord_equal()
+udv=svd(scale(snp.bin.mat.na,T,F))
 ggsave("Plots/AllBinaryData.pdf",ggmatplot(snp.bin.mat)+coord_equal()+theme(legend.position="none"),
+       width=4.33*10,height=10)
+ggsave("Plots/AllBinaryDataRand.pdf",ggmatplot(snp.bin.mat[,sample(ncol(snp.bin.mat))])+coord_equal()+theme(legend.position="none"),
+       width=4.33*10,height=10)
+ggsave("Plots/AllBinaryDataPC1.pdf",ggmatplot(snp.bin.mat[,order(udv$v[,1])])+coord_equal()+theme(legend.position="none"),
+       width=4.33*10,height=10)
+ggsave("Plots/AllBinaryDataPC2.pdf",ggmatplot(snp.bin.mat[,order(udv$v[,2])])+coord_equal()+theme(legend.position="none"),
        width=4.33*10,height=10)
 
 
+ggmatplot(snp.bin.mat[,order(udv$v[,1])])+coord_equal()+theme(legend.position="none")
+
 # Standard PCA
 pca=prcomp(snp.bin.mat.na)
-qplot(PC1,PC2,data=data.frame(pca$x),size=I(3),colour=ethn)+
-  labs(colour="Ethnicity")+coord_equal()
+qplot(PC1,PC2,data=data.frame(pca$x),size=I(2),colour=ethn)+
+  labs(colour="Ethnicity")+coord_equal()+labs(title="Standard PCA")
+ggsave("Plots/StandardPCA.pdf")
+pdf("Plots/StandardPCA Diagnostics.pdf")
 plot(cumsum(pca$sdev^2)/sum(pca$sdev^2),ylim=c(0,1))
 barplot(pca$sdev[1:20]^2)
+dev.off()
 
 # LDA
 library(MASS)
@@ -84,12 +79,14 @@ lambda=lambdas[which.min(BICs)]
 
 slpca=sparse.logistic.pca(snp.bin.mat,lambda=lambda,k=10,quiet=TRUE,max.iters=100)
 
-slpca=sparse.logistic.pca(snp.bin.mat,lambda=0.0015,k=10,quiet=FALSE,max.iters=1000,randstart=TRUE)
-lpca=sparse.logistic.pca(snp.bin.mat,lambda=0,k=10,quiet=FALSE,max.iters=1000,randstart=TRUE)
+slpca=sparse.logistic.pca(snp.bin.mat,lambda=0.0015,k=10,quiet=FALSE,max.iters=100,randstart=T)
+lpca=sparse.logistic.pca(snp.bin.mat,lambda=0,k=10,quiet=FALSE,max.iters=100,randstart=F)
 pca=svd(scale(snp.bin.mat.na,T,F))
 
-qplot(X1,X2,data=data.frame(slpca$A),colour=ethn)
-qplot(X1,X2,data=data.frame(lpca$A),colour=ethn)
+qplot(X1,X2,data=data.frame(slpca$A),colour=ethn)+labs(title=paste("Sparse Logistic PCA, k =",ncol(slpca$A)))
+ggsave(paste0("Plots/Sparse Logistic PCA k=",ncol(slpca$A)," - PCA Start.pdf"))
+qplot(X1,X2,data=data.frame(lpca$A),colour=ethn)+labs(title=paste("Logistic PCA, k =",ncol(lpca$A)))
+ggsave(paste0("Plots/Logistic PCA k=",ncol(lpca$A)," - PCA Start.pdf"))
 
 pairs(slpca$A,col=(1:3)[ethn])
 pairs(lpca$A,col=(1:3)[ethn])

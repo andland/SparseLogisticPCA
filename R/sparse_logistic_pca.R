@@ -58,7 +58,7 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,randst
       cat(m,"  ",zapsmall(-loglike),"   ",zapsmall(penalty),"     ",-loglike+penalty, "\n")
     
     if (m>15) {
-      if ((loss.trace[m-1]-loss.trace[m])<(.0001)) 
+      if ((loss.trace[m-1]-loss.trace[m])<(.001)) 
         break
     }
   }
