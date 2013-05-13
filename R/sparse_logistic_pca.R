@@ -58,13 +58,13 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,
     
     loglike=sum(log(inv.logit.mat(q*(outer(rep(1,n),mu)+A %*% t(B))))[!is.na(dat)])
     penalty=n*lambda*sum(abs(B))
-    loss.trace[m]=-loglike+penalty
+    loss.trace[m]=(-loglike+penalty)/sum(!is.na(dat))
     
     if (!quiet) 
       cat(m,"  ",zapsmall(-loglike),"   ",zapsmall(penalty),"     ",-loglike+penalty, "\n")
     
     if (m>15) {
-      if ((loss.trace[m-1]-loss.trace[m])<(.001)) 
+      if ((loss.trace[m-1]-loss.trace[m])<(.01))
         break
     }
   }
