@@ -6,10 +6,12 @@ inv.logit.mat <- function(x, min = 0, max = 1) {
 }
 
 sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,conv.crit=1e-6,
-                                randstart=FALSE,procrustes=TRUE,
+                                randstart=FALSE,procrustes=TRUE,lasso=FALSE,
                                 start.A,start.B,start.mu) {
   # From Lee, Huang, Hu (2010)
   # Uses the uniform bound for the log likelihood
+  # Can only use lasso=TRUE if lambda is the same for all dimensions, 
+  #   which is how this algorithm is coded
   q=as.matrix(2*dat-1)
   q[is.na(q)]<-0 # forces x to be equal to theta when data is missing
   n=nrow(dat)
@@ -61,8 +63,13 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,conv.c
     theta=outer(rep(1,n),mu)+A %*% t(B)
     X=as.matrix(theta+4*q*(1-inv.logit.mat(q*theta)))
     Xstar=X-outer(rep(1,n),mu)
-    C=t(Xstar) %*% A
-    B=abs(B)/(abs(B)+4*n*lambda)*C
+    if (lasso) {
+      B.lse=t(Xstar) %*% A
+      B=sign(B.lse)*pmax(0,abs(B.lse)-4*n*lambda)
+    } else {
+      C=t(Xstar) %*% A
+      B=abs(B)/(abs(B)+4*n*lambda)*C
+    }
     
     loglike=sum(log(inv.logit.mat(q*(outer(rep(1,n),mu)+A %*% t(B))))[!is.na(dat)])
     penalty=n*lambda*sum(abs(B))
@@ -71,7 +78,7 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,conv.c
     if (!quiet) 
       cat(m,"  ",zapsmall(-loglike),"   ",zapsmall(penalty),"     ",-loglike+penalty, "\n")
     
-    if (m>15) {
+    if (m>4) {
       if ((loss.trace[m-1]-loss.trace[m])<conv.crit)
         break
     }
