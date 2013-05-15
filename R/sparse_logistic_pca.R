@@ -5,8 +5,9 @@ inv.logit.mat <- function(x, min = 0, max = 1) {
   p * (max - min) + min
 }
 
-sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,
-                                randstart=FALSE,procrustes=TRUE) {
+sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,conv.crit=1e-6,
+                                randstart=FALSE,procrustes=TRUE,
+                                start.A,start.B,start.mu) {
   # From Lee, Huang, Hu (2010)
   # Uses the uniform bound for the log likelihood
   q=as.matrix(2*dat-1)
@@ -26,6 +27,13 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,
     A=matrix(runif(n*k,-1,1),n,k)
     B=matrix(runif(d*k,-1,1),d,k)
   }
+  if (!missing(start.A))
+    A=start.A
+  if (!missing(start.B))
+    B=start.B
+  if (!missing(start.mu))
+    mu=start.mu
+  
   # row.names(A)=row.names(dat); row.names(B)=colnames(dat)
   loss.trace=numeric(max.iters)
   
@@ -64,7 +72,7 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,
       cat(m,"  ",zapsmall(-loglike),"   ",zapsmall(penalty),"     ",-loglike+penalty, "\n")
     
     if (m>15) {
-      if ((loss.trace[m-1]-loss.trace[m])<(1e-6))
+      if ((loss.trace[m-1]-loss.trace[m])<conv.crit)
         break
     }
   }
