@@ -5,7 +5,7 @@ inv.logit.mat <- function(x, min = 0, max = 1) {
   p * (max - min) + min
 }
 
-sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,conv.crit=1e-6,
+sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,conv.crit=1e-5,
                                 randstart=FALSE,procrustes=TRUE,lasso=FALSE,
                                 start.A,start.B,start.mu) {
   # From Lee, Huang, Hu (2010)
@@ -91,6 +91,10 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,conv.c
     
     loglike=sum(log(inv.logit.mat(q*(outer(rep(1,n),mu)+A %*% t(B))))[!is.na(dat)])
   }
+  
+  A=sweep(A,2,sqrt(colSums(B^2)),"*")
+  B=sweep(B,2,sqrt(colSums(B^2)),"/")
+  
   zeros=sum(abs(B)<1e-10)
   BIC=-2*loglike+log(n)*(d+n*k+sum(abs(B)>=1e-10))
   return(list(mu=mu,A=A,B=B,zeros=zeros,BIC=BIC,iters=m,loss.trace=loss.trace[1:m]))
