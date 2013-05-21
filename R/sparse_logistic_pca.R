@@ -101,7 +101,7 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,conv.c
   return(list(mu=mu,A=A,B=B,zeros=zeros,BIC=BIC,iters=m,loss.trace=loss.trace[1:m],lambda=lambda))
 }
 
-sparse.logistic.pca.coord <- function(dat,lambdas=0,k=2,quiet=TRUE,max.iters=100,conv.crit=1e-5,
+sparse.logistic.pca.coord <- function(dat,lambdas=10^seq(-15,-1,len=10),k=2,quiet=TRUE,max.iters=100,conv.crit=1e-3,
                                 randstart=FALSE,normalize=FALSE,
                                 start.A,start.B,start.mu) {
   # From Lee, Huang (2013)
@@ -131,8 +131,9 @@ sparse.logistic.pca.coord <- function(dat,lambdas=0,k=2,quiet=TRUE,max.iters=100
     mu=start.mu
   
   # row.names(A)=row.names(dat); row.names(B)=colnames(dat)
-  last.loss=1e10
-  BICs=matrix(NA,length(lamabdas),k)
+  BICs=matrix(NA,length(lambdas),k,dimnames=list(lambdas,1:k))
+  zeros.mat=matrix(NA,length(lambdas),k,dimnames=list(lambdas,1:k))
+  iters=matrix(NA,length(lambdas),k,dimnames=list(lambdas,1:k))
   
   theta=outer(rep(1,n),mu)+A %*% t(B)
   X=as.matrix(theta+4*q*(1-inv.logit.mat(q*theta)))
@@ -145,15 +146,21 @@ sparse.logistic.pca.coord <- function(dat,lambdas=0,k=2,quiet=TRUE,max.iters=100
     
     theta=outer(rep(1,n),mu)+A %*% t(B)
     X=as.matrix(theta+4*q*(1-inv.logit.mat(q*theta)))
-    Xstar=X-outer(rep(1,n),mu)
+    Xm=X-(outer(rep(1,n),mu)+A[,-m] %*% t(B[,-m]))
     
     Bms=matrix(NA,d,length(lambdas))
     Ams=matrix(NA,n,length(lambdas))
     for (lambda in lambdas) {
       for (i in 1:max.iters) {
-        B.lse=t(Xstar) %*% A
-        B[,m]=sign(B.lse)*pmax(0,abs(B.lse)-lambda)
+        if (sum(B[,m]^2)==0) {
+          A[,m]=Xm %*% B[,m]
+          break
+        }
+        A[,m]=Xm %*% B[,m]/sum(B[,m]^2)
+        A[,m]=A[,m]/sqrt(sum(A[,m]^2))
         
+        B.lse=t(Xm) %*% A[,m]
+        B[,m]=sign(B.lse)*pmax(0,abs(B.lse)-lambda)
         
         loglike=sum(log(inv.logit.mat(q*(outer(rep(1,n),mu)+A %*% t(B))))[!is.na(dat)])
         penalty=0.25*lambda*sum(abs(B[,m]))
@@ -162,16 +169,26 @@ sparse.logistic.pca.coord <- function(dat,lambdas=0,k=2,quiet=TRUE,max.iters=100
         if (!quiet) 
           cat(m,"  ",zapsmall(-loglike),"   ",zapsmall(penalty),"     ",-loglike+penalty, "\n")
         
+#         if (!quiet & i>1 & last.loss<cur.loss) {
+#           warning(paste("Loss did not decrease!!",m,which(lambda==lambdas),i))
+#         }
+        
         if (i>4) {
           if ((last.loss-cur.loss)/last.loss<conv.crit) {
             break
           }
         }
+        last.loss=cur.loss
       }
-      Bms[,lambda==lambdas]=B[,m]
-      Ams[,lambda==lambdas]=A[,m]
-      BICs[lambda==lambdas,k]=-2*loglike+log(n*d)*(sum(abs(B)>=1e-10))
+      Bms[,lambda==lambdas]=B[,m]/ifelse(sum(B[,m]^2)==0,1,sqrt(sum(B[,m]^2)))
+      Ams[,lambda==lambdas]=Xm %*% Bms[,lambda==lambdas]/ifelse(sum(Bms[,lambda==lambdas]^2)==0,1,sum(Bms[,lambda==lambdas]^2))
+      
+      BICs[lambda==lambdas,m]=-2*loglike+log(n*d)*(sum(abs(B)>=1e-10))
+      zeros.mat[lambda==lambdas,m]=sum(abs(B[,m])<1e-10)
+      iters[lambda==lambdas,m]=i
     }
+    B[,m]=Bms[,which.min(BICs[,m])]
+    A[,m]=Ams[,which.min(BICs[,m])]
   }
   
   if (normalize) {
@@ -180,6 +197,6 @@ sparse.logistic.pca.coord <- function(dat,lambdas=0,k=2,quiet=TRUE,max.iters=100
   }
   
   zeros=sum(abs(B)<1e-10)
-  BIC=-2*loglike+log(n)*(d+n*k+sum(abs(B)>=1e-10))
-  return(list(mu=mu,A=A,B=B,zeros=zeros,BIC=BIC,iters=m,loss.trace=loss.trace[1:m],lambda=lambda))
+  BIC=-2*loglike+log(n*d)*(sum(abs(B)>=1e-10))
+  return(list(mu=mu,A=A,B=B,zeros=zeros,zeros.mat=zeros.mat,BICs=BICs,BIC=BIC,lambdas=lambdas,iters=iters))
 }
