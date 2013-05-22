@@ -101,7 +101,7 @@ sparse.logistic.pca <- function(dat,lambda=0,k=2,quiet=TRUE,max.iters=100,conv.c
   return(list(mu=mu,A=A,B=B,zeros=zeros,BIC=BIC,iters=m,loss.trace=loss.trace[1:m],lambda=lambda))
 }
 
-sparse.logistic.pca.coord <- function(dat,lambdas=10^seq(-15,-1,len=10),k=2,quiet=TRUE,max.iters=100,conv.crit=1e-3,
+sparse.logistic.pca.coord <- function(dat,lambdas=10^seq(-2,2,len=10),k=2,quiet=TRUE,max.iters=100,conv.crit=1e-5,
                                 randstart=FALSE,normalize=FALSE,
                                 start.A,start.B,start.mu) {
   # From Lee, Huang (2013)
@@ -130,10 +130,10 @@ sparse.logistic.pca.coord <- function(dat,lambdas=10^seq(-15,-1,len=10),k=2,quie
   if (!missing(start.mu))
     mu=start.mu
   
-  # row.names(A)=row.names(dat); row.names(B)=colnames(dat)
-  BICs=matrix(NA,length(lambdas),k,dimnames=list(lambdas,1:k))
-  zeros.mat=matrix(NA,length(lambdas),k,dimnames=list(lambdas,1:k))
-  iters=matrix(NA,length(lambdas),k,dimnames=list(lambdas,1:k))
+  row.names(B)=colnames(dat); # row.names(A)=row.names(dat)
+  BICs=matrix(NA,length(lambdas),k,dimnames=list(paste0("10^",round(log10(lambdas),2)),1:k))
+  zeros.mat=matrix(NA,length(lambdas),k,dimnames=list(paste0("10^",round(log10(lambdas),2)),1:k))
+  iters=matrix(NA,length(lambdas),k,dimnames=list(paste0("10^",round(log10(lambdas),2)),1:k))
   
   theta=outer(rep(1,n),mu)+A %*% t(B)
   X=as.matrix(theta+4*q*(1-inv.logit.mat(q*theta)))
